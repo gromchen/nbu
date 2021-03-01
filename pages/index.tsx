@@ -2,6 +2,10 @@ import { GetStaticProps } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import classNames from 'classnames'
+import useSWR from 'swr'
+import fetcher from '../lib/fetcher'
+
+const url = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json'
 
 interface ExchangeRate {
   r030: number
@@ -16,9 +20,11 @@ interface IndexPageProps {
 }
 
 export default function IndexPage(props: IndexPageProps) {
-  const { exchangeRates } = props
-
-  console.log(exchangeRates);
+  const { data: exchangeRates} = useSWR<ExchangeRate[]>(
+    url,
+    fetcher,
+    { initialData: props.exchangeRates }
+  )
 
   const title = 'NBU Exchange Rate'
   
@@ -47,10 +53,10 @@ export default function IndexPage(props: IndexPageProps) {
           {
             exchangeRates.map(
               exchangeRate => {
-                const { rate, txt, cc } = exchangeRate
+                const { rate, txt, cc, r030 } = exchangeRate
                 
                 return (
-                  <a href="#" className={styles.card}>
+                  <a key={r030} href="#" className={styles.card}>
                     <div className={styles.rateHeader}>
                       <div
                         className={
@@ -87,15 +93,11 @@ export default function IndexPage(props: IndexPageProps) {
 }
 
 export const getStaticProps: GetStaticProps<IndexPageProps> = async () => {
-  const response = await fetch(
-    'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json'
-  )
-
-  const exchangeRate = await response.json()
+  const exchangeRates = await fetcher<ExchangeRate[]>(url)
 
   return {
     props: {
-      exchangeRates: exchangeRate
+      exchangeRates
     },
     revalidate: 3600
   }
